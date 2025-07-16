@@ -5,9 +5,9 @@ var cookieParser = require("cookie-parser");
 var logger = require("morgan");
 
 var indexRouter = require("./routes/index");
-var usersRouter = require("./routes/users");
 require("dotenv").config();
 const methodOverride = require("method-override");
+const handlebars = require("express-handlebars");
 
 var app = express();
 const db = require("./config/db");
@@ -33,8 +33,32 @@ app.use(
 app.use(methodOverride("_method"));
 
 // view engine setup
+app.engine(
+  "hbs",
+  handlebars.engine({
+    extname: "hbs",
+    defaultLayout: "main",
+    layoutsDir: __dirname + "/views/layouts",
+    partialsDir: __dirname + "/views/partials",
+    helpers: {
+      increment: function (value) {
+        return value + 1;
+      },
+      eq: function (a, b) {
+        return String(a) === String(b);
+      },
+      range: function (n) {
+        return [...Array(n).keys()];
+      },
+      formatDate: (date, format) => {
+        return moment(date).format(format);
+      },
+    },
+  })
+);
+
+app.set("view engine", "hbs");
 app.set("views", path.join(__dirname, "views"));
-app.set("view engine", "jade");
 
 app.use(logger("dev"));
 app.use(express.json());
@@ -42,9 +66,12 @@ app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, "public")));
 
+const authRouter = require("./routes/auth");
+const { jwtMiddleware } = require("./middlewares/auth.middleware");
 app.use("/", indexRouter);
-app.use("/users", usersRouter);
-
+app.use("/", authRouter);
+app.use("/api/courses", jwtMiddleware, require("./routes/course"));
+app.use("/view/sessions", require("./routes/section"));
 // catch 404 and forward to error handler
 app.use(function (req, res, next) {
   next(createError(404));
@@ -55,6 +82,9 @@ app.use(function (err, req, res, next) {
   // set locals, only providing error in development
   res.locals.message = err.message;
   res.locals.error = req.app.get("env") === "development" ? err : {};
+
+  req.session.accessToken = null;
+  req.session.username = null;
 
   // render the error page
   res.status(err.status || 500);
