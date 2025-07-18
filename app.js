@@ -30,8 +30,6 @@ app.use(
   })
 );
 
-app.use(methodOverride("_method"));
-
 // view engine setup
 app.engine(
   "hbs",
@@ -66,8 +64,17 @@ app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, "public")));
 
+app.use(methodOverride("_method"));
+
 const authRouter = require("./routes/auth");
 const { jwtMiddleware } = require("./middlewares/auth.middleware");
+
+// app.use((req, res, next) => {
+//   res.locals.error = req.session.error;
+//   req.session.error = null;
+//   next();
+// });
+
 app.use("/", indexRouter);
 app.use("/", authRouter);
 app.use("/api/courses", jwtMiddleware, require("./routes/course"));
@@ -85,6 +92,8 @@ app.use(function (err, req, res, next) {
 
   req.session.accessToken = null;
   req.session.username = null;
+  req.session.courses = null;
+  req.session.sections = null;
 
   // render the error page
   res.status(err.status || 500);

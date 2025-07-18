@@ -1,8 +1,132 @@
-{{#if username}}
-  <p>Welcome! {{username}}</p>
-  <form action="/logout" method="POST">
-    <button type="submit">Logout</button>
-  </form>
+<button class="btn btn-primary mb-3" onclick="location.href='/view/sessions/create'">Create New Section</button>
+
+<h1>Available Sections</h1>
+
+{{#if sections}}
+  <ul class="list-group">
+    {{#each sections}}
+      <li class="list-group-item" id="section-{{this.id}}">
+        <!-- View Mode -->
+        <div class="view-mode">
+          <h5>{{this.name}}</h5>
+          <p>{{this.description}}</p>
+          <p><strong>Duration:</strong> {{this.duration}} minutes</p>
+          <p><strong>Main Task:</strong> {{#if this.isMainTask}}Yes{{else}}No{{/if}}</p>
+          <p><strong>Course:</strong> {{this.course}}</p>
+<button class="btn btn-sm btn-warning" onclick="toggleEdit('{{this.id}}')">Edit</button>
+<button onclick="deleteSection('{{this.id}}')" class="btn btn-danger btn-sm">Delete</button>
+
+        </div>
+
+        <!-- Edit Mode -->
+        <form class="edit-mode hidden mt-2" onsubmit="return saveSection(event, '{{this.id}}')">
+          <div class="mb-2">
+            <label>Name</label>
+            <input type="text" class="form-control" name="sectionName" value="{{this.name}}" required />
+          </div>
+          <div class="mb-2">
+            <label>Description</label>
+            <textarea class="form-control" name="sectionDescription" required>{{this.description}}</textarea>
+          </div>
+          <div class="mb-2">
+            <label>Duration (minutes)</label>
+            <input type="number" class="form-control" name="duration" value="{{this.duration}}" required />
+          </div>
+          <div class="mb-2">
+            <label>Main Task</label>
+            <input type="checkbox" name="isMainTask" value="{{this.isMainTask}}" {{#if this.isMainTask}}checked{{/if}} />
+          </div>
+<div class="mb-2">
+  <label>Course</label>
+  <select name="course" class="form-control" required>
+    {{#each ../courses}} <!-- use ../ to go up to root context -->
+      <option value="{{this.id}}" {{#if (eq this.id ../courseId)}}selected{{/if}}>
+        {{this.name}}
+      </option>
+    {{/each}}
+  </select>
+</div>
+          <button type="submit" class="btn btn-sm btn-success">Save</button>
+          <button type="button" class="btn btn-sm btn-secondary" onclick="toggleEdit('{{this.id}}')">Cancel</button>
+        </form>
+      </li>
+    {{/each}}
+  </ul>
 {{else}}
-  <p>Please <a href="/view/auth/login">login</a> to access your account.</p>
+  <p>No sections available. Please create a section first.</p>
 {{/if}}
+
+{{#if error}}
+  <div class="alert alert-danger mt-3">
+    {{error}}
+  </div>
+{{/if}}
+
+<style>
+  .hidden{
+    display: none;
+  }
+</style>
+
+<script>
+  function toggleEdit(id) {
+    const section = document.getElementById(`section-${id}`);
+    const view = section.querySelector('.view-mode');
+    const edit = section.querySelector('.edit-mode');
+
+    if (!view || !edit) {
+      console.error("Missing .view-mode or .edit-mode in section-" + id);
+      return;
+    }
+
+    console.log("Toggling edit mode for section-" + id);
+
+    view.classList.toggle('hidden');
+    edit.classList.toggle('hidden');
+  }
+
+  async function saveSection(event, id) {
+    event.preventDefault();
+    const form = event.target;
+    const data = {
+      sectionName: form.sectionName.value.trim(),
+      sectionDescription: form.sectionDescription.value.trim(),
+      duration: parseInt(form.duration.value),
+      isMainTask: form.isMainTask.value === 'true',
+      course: form.course.value.trim()
+    };
+
+    try {
+      const response = await fetch(`/view/sessions/${id}`, {
+        method: 'POST', // Or PUT if that's what your API expects
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(data)
+      });
+
+      if (response.ok) {
+        location.reload();
+      } else {
+        const errorData = await response.json();
+        alert(`Error: ${errorData.message || 'Failed to update section.'}`);
+      }
+    } catch (err) {
+      console.error('Error updating section:', err);
+      alert('Error while updating section.');
+    }
+
+    return false;
+  }
+
+    async function deleteSection(id) {
+    if (!confirm('Are you sure?')) return;
+
+    const res = await fetch(`/view/sessions/${id}`, {
+      method: 'DELETE'
+    });
+
+    if (res.ok) location.reload();
+    else alert('Failed to delete section');
+  }
+</script>
